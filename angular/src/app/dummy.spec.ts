@@ -1,7 +1,5 @@
-import { describe, it, expect } from 'vitest';
-
-describe('Frontend initial sanity check', () => {
-  it('should pass initial suite', () => {
+describe('Initial Test Suite', () => {
+  it('should pass initial sanity check', () => {
     expect(true).toBe(true);
   });
 });
