@@ -14,6 +14,7 @@ using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.OpenIddict.EntityFrameworkCore;
 using Volo.Abp.TenantManagement;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
+using SmartPantry.Products;
 
 namespace SmartPantry.EntityFrameworkCore;
 
@@ -26,7 +27,7 @@ public class SmartPantryDbContext :
     IIdentityDbContext
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
-
+        public DbSet<Product> Products { get; set; }
 
     #region Entities from the modules
 
@@ -91,11 +92,21 @@ if (Database.ProviderName?.Contains("MySql") == true)
 
         /* Configure your own tables/entities inside here */
 
-        //builder.Entity<YourEntity>(b =>
-        //{
-        //    b.ToTable(SmartPantryConsts.DbTablePrefix + "YourEntities", SmartPantryConsts.DbSchema);
-        //    b.ConfigureByConvention(); //auto configure for the base class props
-        //    //...
-        //});
+        builder.Entity<Product>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "Products", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.OwnsOne(x => x.Barcode, barcode =>
+            {
+                barcode.Property(x => x.Code)
+                    .HasColumnName("Barcode")
+                    .IsRequired()
+                    .HasMaxLength(ProductConsts.MaxBarcodeLength);
+            });
+
+            b.Property(x => x.Name).IsRequired().HasMaxLength(ProductConsts.MaxNameLength);
+            b.Property(x => x.Brand).HasMaxLength(ProductConsts.MaxBrandLength);
+        });
     }
 }
