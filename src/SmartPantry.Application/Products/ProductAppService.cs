@@ -1,45 +1,60 @@
 using System;
 using System.Threading.Tasks;
+using Volo.Abp;
+using Volo.Abp.Application.Dtos;
+using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
 namespace SmartPantry.Products;
 
-public class ProductAppService : SmartPantryAppService, IProductAppService
+public class ProductAppService :
+    CrudAppService<Product, ProductDto, Guid, PagedAndSortedResultRequestDto, CreateProductDto, UpdateProductDto>,
+    IProductAppService
 {
-    private readonly IRepository<Product, Guid> _productRepository;
-
-    public ProductAppService(IRepository<Product, Guid> productRepository)
+    public ProductAppService(IRepository<Product, Guid> repository) : base(repository)
     {
-        _productRepository = productRepository;
     }
 
-    public async Task<ProductDto> CreateAsync(CreateProductDto input)
+    // ADAPTADO: Product se crea con su constructor (valida) y Barcode es un Value Object
+    public override async Task<ProductDto> CreateAsync(CreateProductDto input)
     {
-        var product = new Product(
-            GuidGenerator.Create(),
-            new Barcode(input.Barcode),
-            input.Name,
-            input.Brand);
-
-        await _productRepository.InsertAsync(product);
-
-        return ToDto(product);
+        await CheckCreatePolicyAsync();
+        var product = new Product(GuidGenerator.Create(), new Barcode(input.Barcode), input.Name, input.Brand);
+        await Repository.InsertAsync(product);
+        return MapToGetOutputDto(product);
     }
 
-    public async Task<ProductDto> GetAsync(Guid id)
+    // ADAPTADO: la regla de modificación vive en el dominio (Product.Update)
+    public override async Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto input)
     {
-        var product = await _productRepository.GetAsync(id);
-        return ToDto(product);
+        await CheckUpdatePolicyAsync();
+        var product = await GetEntityByIdAsync(id);
+        product.Update(input.Name, input.Brand);
+        await Repository.UpdateAsync(product);
+        return MapToGetOutputDto(product);
     }
 
-    private static ProductDto ToDto(Product product)
+    // DESACTIVADO: Product no se elimina (PantryItem lo referenciará por productId)
+    [RemoteService(false)]
+    public override Task DeleteAsync(Guid id)
+    {
+        throw new NotSupportedException("Product no se elimina.");
+    }
+
+    // ADAPTADO: mapeo a mano, porque Barcode es un Value Object y el DTO usa su Code
+    protected override ProductDto MapToGetOutputDto(Product entity)
     {
         return new ProductDto
         {
-            Id = product.Id,
-            Barcode = product.Barcode.Code,
-            Name = product.Name,
-            Brand = product.Brand
+            Id = entity.Id,
+            Barcode = entity.Barcode.Code,
+            Name = entity.Name,
+            Brand = entity.Brand
         };
+    }
+
+    protected override ProductDto MapToGetListOutputDto(Product entity)
+    {
+        return MapToGetOutputDto(entity);
     }
 }
