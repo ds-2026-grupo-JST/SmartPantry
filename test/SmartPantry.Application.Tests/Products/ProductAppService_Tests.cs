@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Shouldly;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Modularity;
 using Volo.Abp.Validation;
@@ -56,5 +57,84 @@ public abstract class ProductAppService_Tests<TStartupModule> : SmartPantryAppli
     {
         await Assert.ThrowsAnyAsync<EntityNotFoundException>(async () =>
             await _productAppService.GetAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Should_List_Products_Paged_And_Sorted_By_Name()
+    {
+        await _productAppService.CreateAsync(new CreateProductDto { Barcode = "7790000000001", Name = "Leche" });
+        await _productAppService.CreateAsync(new CreateProductDto { Barcode = "7790000000002", Name = "Arroz" });
+        await _productAppService.CreateAsync(new CreateProductDto { Barcode = "7790000000003", Name = "Yogur" });
+
+        var page = await _productAppService.GetListAsync(new PagedAndSortedResultRequestDto
+        {
+            SkipCount = 0,
+            MaxResultCount = 2,
+            Sorting = "Name"
+        });
+
+        page.TotalCount.ShouldBe(3);
+        page.Items.Count.ShouldBe(2);
+        page.Items[0].Name.ShouldBe("Arroz");
+        page.Items[1].Name.ShouldBe("Leche");
+    }
+
+    [Fact]
+    public async Task Should_Update_Product_And_Keep_Barcode()
+    {
+        var created = await _productAppService.CreateAsync(new CreateProductDto
+        {
+            Barcode = "7790000000001",
+            Name = "Leche",
+            Brand = "Marca A"
+        });
+
+        var updated = await _productAppService.UpdateAsync(created.Id, new UpdateProductDto
+        {
+            Name = "  Yogur  ",
+            Brand = "  Marca B  "
+        });
+
+        updated.Name.ShouldBe("Yogur");
+        updated.Brand.ShouldBe("Marca B");
+
+        var found = await _productAppService.GetAsync(created.Id);
+
+        found.Name.ShouldBe("Yogur");
+        found.Brand.ShouldBe("Marca B");
+        found.Barcode.ShouldBe("7790000000001");
+    }
+
+    [Fact]
+    public async Task Should_Not_Update_Product_With_Invalid_Data()
+    {
+        var created = await _productAppService.CreateAsync(new CreateProductDto
+        {
+            Barcode = "7790000000001",
+            Name = "Leche",
+            Brand = "Marca A"
+        });
+
+        await Assert.ThrowsAsync<AbpValidationException>(async () =>
+            await _productAppService.UpdateAsync(created.Id, new UpdateProductDto
+            {
+                Name = "",
+                Brand = "Marca B"
+            }));
+
+        var found = await _productAppService.GetAsync(created.Id);
+
+        found.Name.ShouldBe("Leche");
+        found.Brand.ShouldBe("Marca A");
+    }
+
+    [Fact]
+    public async Task Should_Throw_NotFound_When_Updating_Unknown_Id()
+    {
+        await Assert.ThrowsAnyAsync<EntityNotFoundException>(async () =>
+            await _productAppService.UpdateAsync(Guid.NewGuid(), new UpdateProductDto
+            {
+                Name = "Yogur"
+            }));
     }
 }
