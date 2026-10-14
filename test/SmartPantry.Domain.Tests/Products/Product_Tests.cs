@@ -40,4 +40,41 @@ public class Product_Tests
     {
         Assert.ThrowsAny<ArgumentException>(() => new Barcode(code!));
     }
+
+    [Fact]
+    public void Update_Should_Change_And_Normalize_Name_And_Brand()
+    {
+        var product = new Product(Guid.NewGuid(), new Barcode("7790001"), "Leche", "Marca A");
+
+        product.Update("  Yogur  ", "  Marca B  ");
+
+        Assert.Equal("Yogur", product.Name);
+        Assert.Equal("Marca B", product.Brand);
+        Assert.Equal("7790001", product.Barcode.Code);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Update_Should_Reject_Invalid_Name_And_Keep_State(string invalidName)
+    {
+        var product = new Product(Guid.NewGuid(), new Barcode("7790001"), "Leche", "Marca A");
+
+        Assert.ThrowsAny<ArgumentException>(() => product.Update(invalidName, "Marca B"));
+
+        Assert.Equal("Leche", product.Name);
+        Assert.Equal("Marca A", product.Brand);
+    }
+
+    [Fact]
+    public void Update_Should_Not_Leave_Partial_Changes_When_Brand_Is_Invalid()
+    {
+        var product = new Product(Guid.NewGuid(), new Barcode("7790001"), "Leche", "Marca A");
+        var tooLongBrand = new string('x', ProductConsts.MaxBrandLength + 1);
+
+        Assert.ThrowsAny<ArgumentException>(() => product.Update("Yogur", tooLongBrand));
+
+        Assert.Equal("Leche", product.Name);
+        Assert.Equal("Marca A", product.Brand);
+    }
 }
