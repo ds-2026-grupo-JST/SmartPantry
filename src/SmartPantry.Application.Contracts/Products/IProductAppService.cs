@@ -11,4 +11,6 @@ public interface IProductAppService : IApplicationService
     Task<ProductDto> GetAsync(Guid id);
     Task<PagedResultDto<ProductDto>> GetListAsync(PagedAndSortedResultRequestDto input);
     Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto input);
+
+    Task<ProductLookupResultDto> GetByBarcodeAsync(GetProductByBarcodeInput input);
 }
