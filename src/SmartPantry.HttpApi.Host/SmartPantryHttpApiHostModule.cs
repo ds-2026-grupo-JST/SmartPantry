@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SmartPantry.Products;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -53,7 +54,7 @@ namespace SmartPantry;
     typeof(AbpAccountWebOpenIddictModule),
     typeof(AbpSwashbuckleModule),
     typeof(AbpAspNetCoreSerilogModule)
-    )]
+)]
 public class SmartPantryHttpApiHostModule : AbpModule
 {
     public override void PreConfigureServices(ServiceConfigurationContext context)
@@ -80,8 +81,14 @@ public class SmartPantryHttpApiHostModule : AbpModule
 
             PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
             {
-                serverBuilder.AddProductionEncryptionAndSigningCertificate("openiddict.pfx", configuration["AuthServer:CertificatePassPhrase"]!);
-                serverBuilder.SetIssuer(new Uri(configuration["AuthServer:Authority"]!));
+                serverBuilder.AddProductionEncryptionAndSigningCertificate(
+                    "openiddict.pfx",
+                    configuration["AuthServer:CertificatePassPhrase"]!
+                );
+
+                serverBuilder.SetIssuer(
+                    new Uri(configuration["AuthServer:Authority"]!)
+                );
             });
         }
     }
@@ -90,6 +97,21 @@ public class SmartPantryHttpApiHostModule : AbpModule
     {
         var configuration = context.Services.GetConfiguration();
         var hostingEnvironment = context.Services.GetHostingEnvironment();
+
+        // TP07: cliente HTTP para consultar Open Food Facts
+        context.Services.AddHttpClient<
+            IExternalProductCatalogClient,
+            OpenFoodFactsProductCatalogClient>(client =>
+        {
+            client.BaseAddress =
+                new Uri("https://world.openfoodfacts.org/api/v3/");
+
+            client.Timeout = TimeSpan.FromSeconds(15);
+
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "SmartPantry/1.0 (https://github.com/ds-2026-grupo-JST/SmartPantry)"
+            );
+        });
 
         if (!configuration.GetValue<bool>("App:DisablePII"))
         {
@@ -103,7 +125,7 @@ public class SmartPantryHttpApiHostModule : AbpModule
             {
                 options.DisableTransportSecurityRequirement = true;
             });
-            
+
             Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
@@ -142,7 +164,10 @@ public class SmartPantryHttpApiHostModule : AbpModule
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
     {
-        context.Services.ForwardIdentityAuthenticationForBearer(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        context.Services.ForwardIdentityAuthenticationForBearer(
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
+        );
+
         context.Services.Configure<AbpClaimsPrincipalFactoryOptions>(options =>
         {
             options.IsDynamicClaimsEnabled = true;
@@ -155,8 +180,13 @@ public class SmartPantryHttpApiHostModule : AbpModule
         {
             options.Applications["MVC"].RootUrl = configuration["App:SelfUrl"];
             options.Applications["Angular"].RootUrl = configuration["App:AngularUrl"];
-            options.Applications["Angular"].Urls[AccountUrlNames.PasswordReset] = "account/reset-password";
-            options.RedirectAllowedUrls.AddRange(configuration["App:RedirectAllowedUrls"]?.Split(',') ?? Array.Empty<string>());
+            options.Applications["Angular"].Urls[AccountUrlNames.PasswordReset] =
+                "account/reset-password";
+
+            options.RedirectAllowedUrls.AddRange(
+                configuration["App:RedirectAllowedUrls"]?.Split(',')
+                ?? Array.Empty<string>()
+            );
         });
     }
 
@@ -177,6 +207,7 @@ public class SmartPantryHttpApiHostModule : AbpModule
                 bundle =>
                 {
                     bundle.AddFiles("/global-scripts.js");
+
                     if (hostingEnvironment.IsDevelopment())
                     {
                         bundle.AddFiles("/dev-login-helper.js");
@@ -186,7 +217,6 @@ public class SmartPantryHttpApiHostModule : AbpModule
         });
     }
 
-
     private void ConfigureVirtualFileSystem(ServiceConfigurationContext context)
     {
         var hostingEnvironment = context.Services.GetHostingEnvironment();
@@ -195,10 +225,33 @@ public class SmartPantryHttpApiHostModule : AbpModule
         {
             Configure<AbpVirtualFileSystemOptions>(options =>
             {
-                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryDomainSharedModule>(Path.Combine(hostingEnvironment.ContentRootPath, $"..{Path.DirectorySeparatorChar}SmartPantry.Domain.Shared"));
-                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryDomainModule>(Path.Combine(hostingEnvironment.ContentRootPath, $"..{Path.DirectorySeparatorChar}SmartPantry.Domain"));
-                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryApplicationContractsModule>(Path.Combine(hostingEnvironment.ContentRootPath, $"..{Path.DirectorySeparatorChar}SmartPantry.Application.Contracts"));
-                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryApplicationModule>(Path.Combine(hostingEnvironment.ContentRootPath, $"..{Path.DirectorySeparatorChar}SmartPantry.Application"));
+                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryDomainSharedModule>(
+                    Path.Combine(
+                        hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}SmartPantry.Domain.Shared"
+                    )
+                );
+
+                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryDomainModule>(
+                    Path.Combine(
+                        hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}SmartPantry.Domain"
+                    )
+                );
+
+                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryApplicationContractsModule>(
+                    Path.Combine(
+                        hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}SmartPantry.Application.Contracts"
+                    )
+                );
+
+                options.FileSets.ReplaceEmbeddedByPhysical<SmartPantryApplicationModule>(
+                    Path.Combine(
+                        hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}SmartPantry.Application"
+                    )
+                );
             });
         }
     }
@@ -207,11 +260,15 @@ public class SmartPantryHttpApiHostModule : AbpModule
     {
         Configure<AbpAspNetCoreMvcOptions>(options =>
         {
-            options.ConventionalControllers.Create(typeof(SmartPantryApplicationModule).Assembly);
+            options.ConventionalControllers.Create(
+                typeof(SmartPantryApplicationModule).Assembly
+            );
         });
     }
 
-    private static void ConfigureSwagger(ServiceConfigurationContext context, IConfiguration configuration)
+    private static void ConfigureSwagger(
+        ServiceConfigurationContext context,
+        IConfiguration configuration)
     {
         context.Services.AddAbpSwaggerGenWithOidc(
             configuration["AuthServer:Authority"]!,
@@ -220,13 +277,26 @@ public class SmartPantryHttpApiHostModule : AbpModule
             null,
             options =>
             {
-                options.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartPantry API", Version = "v1" });
-                options.DocInclusionPredicate((docName, description) => true);
+                options.SwaggerDoc(
+                    "v1",
+                    new OpenApiInfo
+                    {
+                        Title = "SmartPantry API",
+                        Version = "v1"
+                    }
+                );
+
+                options.DocInclusionPredicate(
+                    (docName, description) => true
+                );
+
                 options.CustomSchemaIds(type => type.FullName);
             });
     }
 
-    private void ConfigureCors(ServiceConfigurationContext context, IConfiguration configuration)
+    private void ConfigureCors(
+        ServiceConfigurationContext context,
+        IConfiguration configuration)
     {
         context.Services.AddCors(options =>
         {
@@ -237,7 +307,8 @@ public class SmartPantryHttpApiHostModule : AbpModule
                         configuration["App:CorsOrigins"]?
                             .Split(",", StringSplitOptions.RemoveEmptyEntries)
                             .Select(o => o.Trim().RemovePostFix("/"))
-                            .ToArray() ?? Array.Empty<string>()
+                            .ToArray()
+                        ?? Array.Empty<string>()
                     )
                     .WithAbpExposedHeaders()
                     .SetIsOriginAllowedToAllowWildcardSubdomains()
@@ -253,8 +324,8 @@ public class SmartPantryHttpApiHostModule : AbpModule
         context.Services.AddSmartPantryHealthChecks();
     }
 
-
-    public override void OnApplicationInitialization(ApplicationInitializationContext context)
+    public override void OnApplicationInitialization(
+        ApplicationInitializationContext context)
     {
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
@@ -291,13 +362,22 @@ public class SmartPantryHttpApiHostModule : AbpModule
         app.UseAuthorization();
 
         app.UseSwagger();
+
         app.UseAbpSwaggerUI(options =>
         {
-            options.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartPantry API");
+            options.SwaggerEndpoint(
+                "/swagger/v1/swagger.json",
+                "SmartPantry API"
+            );
 
-            var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
-            options.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
+            var configuration =
+                context.ServiceProvider.GetRequiredService<IConfiguration>();
+
+            options.OAuthClientId(
+                configuration["AuthServer:SwaggerClientId"]
+            );
         });
+
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
         app.UseConfiguredEndpoints();
