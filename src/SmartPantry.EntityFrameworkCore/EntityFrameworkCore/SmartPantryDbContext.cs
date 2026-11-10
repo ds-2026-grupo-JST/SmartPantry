@@ -138,6 +138,9 @@ if (Database.ProviderName?.Contains("MySql") == true)
 
             b.Property(x => x.ProductId).IsRequired();
             b.Property(x => x.Status).IsRequired();
+            b.Property(x => x.ExpirationDate)
+                .HasConversion<DateOnlyDateTimeConverter>()
+                .HasColumnType("date");
         });
 
         builder.Entity<ExpirationWarning>(b =>
@@ -153,6 +156,9 @@ if (Database.ProviderName?.Contains("MySql") == true)
 
             // Clave lógica: una sola advertencia por ítem y tipo
             b.HasIndex(x => new { x.PantryItemId, x.Type }).IsUnique();
+            b.Property(x => x.ExpirationDate)
+                .HasConversion<DateOnlyDateTimeConverter>()
+                .HasColumnType("date");
         });
     }
 }
