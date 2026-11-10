@@ -2,6 +2,7 @@
 using NSubstitute;
 using SmartPantry.Products;
 using Volo.Abp.Modularity;
+using Volo.Abp.BackgroundWorkers;
 
 namespace SmartPantry;
 
@@ -19,5 +20,10 @@ public class SmartPantryApplicationTestModule : AbpModule
         context.Services.AddSingleton<IExternalProductCatalogClient>(
             externalProductCatalogClient
         );
+        
+        Configure<AbpBackgroundWorkerOptions>(options =>
+        {
+            options.IsEnabled = false;
+        });
     }
 }
