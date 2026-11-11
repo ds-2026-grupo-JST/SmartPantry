@@ -15,6 +15,8 @@ using Volo.Abp.OpenIddict.EntityFrameworkCore;
 using Volo.Abp.TenantManagement;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
 using SmartPantry.Products;
+using SmartPantry.Pantries;
+using SmartPantry.Warnings;
 
 namespace SmartPantry.EntityFrameworkCore;
 
@@ -28,6 +30,8 @@ public class SmartPantryDbContext :
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
         public DbSet<Product> Products { get; set; }
+        public DbSet<Pantry> Pantries { get; set; }
+        public DbSet<ExpirationWarning> ExpirationWarnings { get; set; }
 
     #region Entities from the modules
 
@@ -75,7 +79,7 @@ public class SmartPantryDbContext :
         builder.ConfigureBackgroundJobs();
         builder.ConfigureAuditLogging();
         builder.ConfigureFeatureManagement();
-      builder.ConfigureIdentity();
+        builder.ConfigureIdentity();
 
 if (Database.ProviderName?.Contains("MySql") == true)
 {
@@ -107,6 +111,54 @@ if (Database.ProviderName?.Contains("MySql") == true)
 
             b.Property(x => x.Name).IsRequired().HasMaxLength(ProductConsts.MaxNameLength);
             b.Property(x => x.Brand).HasMaxLength(ProductConsts.MaxBrandLength);
+        });
+
+        builder.Entity<Pantry>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "Pantries", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.UserId).IsRequired();
+            b.Property(x => x.Name).IsRequired().HasMaxLength(PantryConsts.MaxNameLength);
+            b.HasIndex(x => x.UserId);
+
+            b.HasMany(x => x.Items)
+                .WithOne()
+                .HasForeignKey("PantryId")
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.Navigation(x => x.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        builder.Entity<PantryItem>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "PantryItems", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.ProductId).IsRequired();
+            b.Property(x => x.Status).IsRequired();
+            b.Property(x => x.ExpirationDate)
+                .HasConversion<DateOnlyDateTimeConverter>()
+                .HasColumnType("date");
+        });
+
+        builder.Entity<ExpirationWarning>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "ExpirationWarnings", SmartPantryConsts.DbSchema);
+            b.ConfigureByConvention();
+
+            b.Property(x => x.PantryId).IsRequired();
+            b.Property(x => x.PantryItemId).IsRequired();
+            b.Property(x => x.Type).IsRequired();
+            b.Property(x => x.ExpirationDate).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+
+            // Clave lógica: una sola advertencia por ítem y tipo
+            b.HasIndex(x => new { x.PantryItemId, x.Type }).IsUnique();
+            b.Property(x => x.ExpirationDate)
+                .HasConversion<DateOnlyDateTimeConverter>()
+                .HasColumnType("date");
         });
     }
 }
