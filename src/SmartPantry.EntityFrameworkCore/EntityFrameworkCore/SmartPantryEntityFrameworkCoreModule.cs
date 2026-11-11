@@ -14,6 +14,9 @@ using Volo.Abp.SettingManagement.EntityFrameworkCore;
 using Volo.Abp.BlobStoring.Database.EntityFrameworkCore;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
 using Volo.Abp.Studio;
+using Microsoft.EntityFrameworkCore;
+using SmartPantry.Pantries;
+using Volo.Abp.EntityFrameworkCore.DependencyInjection;
 
 namespace SmartPantry.EntityFrameworkCore;
 
@@ -45,6 +48,14 @@ public class SmartPantryEntityFrameworkCoreModule : AbpModule
                 /* Remove "includeAllEntities: true" to create
                  * default repositories only for aggregate roots */
             options.AddDefaultRepositories(includeAllEntities: true);
+        });
+        
+        Configure<AbpEntityOptions>(options =>
+        {
+            options.Entity<Pantry>(entityOptions =>
+            {
+                entityOptions.DefaultWithDetailsFunc = query => query.Include(p => p.Items);
+            });
         });
 
         if (AbpStudioAnalyzeHelper.IsInAnalyzeMode)

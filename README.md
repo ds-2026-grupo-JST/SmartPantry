@@ -189,6 +189,26 @@ yarn test --watch=false
 
 El proyecto incluye un test mínimo de verificación para comprobar que el entorno de pruebas de Angular funciona correctamente.
 
+## Advertencias de vencimiento (RF-15)
+
+El sistema genera advertencias para los ítems de una despensa que están por vencer o que ya vencieron.
+
+**Umbral:** 3 días (`ExpirationWarningConsts.DefaultThresholdDays`). El día límite está incluido: un ítem que vence dentro de 3 días ya genera advertencia.
+
+**Reglas** (se compara contra la fecha de hoy en UTC):
+
+- Vence hoy o dentro del umbral: advertencia `ExpiringSoon`.
+- Fecha anterior a hoy: advertencia `Expired`.
+- Fuera del umbral: sin advertencia.
+- Sin fecha de vencimiento: sin advertencia.
+- Ítem consumido: sin advertencia.
+
+**Una advertencia por ítem y tipo.** La clave lógica es (ítem, tipo) y la base de datos la protege con un índice único (`IX_AppExpirationWarnings_PantryItemId_Type`). Las advertencias no se borran: se marcan como inactivas (`IsActive = false`) cuando dejan de corresponder y se reactivan si el ítem vuelve a cumplir la condición. Si cambia la fecha del ítem, se actualiza la misma advertencia. Ejecutar el proceso varias veces no duplica nada.
+
+**Cuándo se ejecuta.** `ExpirationWarningWorker` (un worker de fondo de ABP, en `SmartPantry.Application`) corre al iniciar `HttpApi.Host` y después cada 1 hora. Está registrado en `SmartPantryApplicationModule`. Cada ejecución usa su propio scope y su propia unidad de trabajo, y si falla registra el error y vuelve a intentar en la ejecución siguiente.
+
+**Datos de prueba locales.** `scripts/despensa-de-prueba.sql` (ejecutarlo en DBeaver como script) crea una despensa con 5 ítems. Al levantar `HttpApi.Host`, el worker genera 2 advertencias: una `ExpiringSoon` y una `Expired`. Por ahora no hay una API pública para elegir ni modificar el dueño de una despensa.
+
 ## Integración continua
 
 El repositorio utiliza GitHub Actions mediante el archivo:
