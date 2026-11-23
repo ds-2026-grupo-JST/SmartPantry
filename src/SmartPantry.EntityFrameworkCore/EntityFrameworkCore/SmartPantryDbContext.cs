@@ -80,16 +80,6 @@ public class SmartPantryDbContext :
         builder.ConfigureAuditLogging();
         builder.ConfigureFeatureManagement();
         builder.ConfigureIdentity();
-
-if (Database.ProviderName?.Contains("MySql") == true)
-{
-    builder.Entity<IdentityUser>(b =>
-    {
-        b.Ignore(x => x.Passkeys);
-    });
-
-    builder.Ignore<IdentityUserPasskey>();
-}
         builder.ConfigureOpenIddict();
         builder.ConfigureTenantManagement();
         builder.ConfigureBlobStoring();

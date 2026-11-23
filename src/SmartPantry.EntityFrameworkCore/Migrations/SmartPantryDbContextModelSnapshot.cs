@@ -58,7 +58,7 @@ namespace SmartPantry.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("char(36)");
 
-                    b.Property<DateOnly?>("ExpirationDate")
+                    b.Property<DateTime?>("ExpirationDate")
                         .HasColumnType("date");
 
                     b.Property<Guid>("PantryId")
@@ -120,7 +120,7 @@ namespace SmartPantry.Migrations
                         .HasColumnType("varchar(40)")
                         .HasColumnName("ConcurrencyStamp");
 
-                    b.Property<DateOnly>("ExpirationDate")
+                    b.Property<DateTime>("ExpirationDate")
                         .HasColumnType("date");
 
                     b.Property<string>("ExtraProperties")
@@ -1282,6 +1282,30 @@ namespace SmartPantry.Migrations
                     b.ToTable("AbpUserOrganizationUnits", (string)null);
                 });
 
+            modelBuilder.Entity("Volo.Abp.Identity.IdentityUserPasskey", b =>
+                {
+                    b.Property<byte[]>("CredentialId")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varbinary(1024)");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("json")
+                        .HasColumnName("Data");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("TenantId");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("CredentialId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AbpUserPasskeys", (string)null);
+                });
+
             modelBuilder.Entity("Volo.Abp.Identity.IdentityUserPasswordHistory", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -2199,6 +2223,15 @@ namespace SmartPantry.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Volo.Abp.Identity.IdentityUserPasskey", b =>
+                {
+                    b.HasOne("Volo.Abp.Identity.IdentityUser", null)
+                        .WithMany("Passkeys")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Volo.Abp.Identity.IdentityUserPasswordHistory", b =>
                 {
                     b.HasOne("Volo.Abp.Identity.IdentityUser", null)
@@ -2310,6 +2343,8 @@ namespace SmartPantry.Migrations
                     b.Navigation("Logins");
 
                     b.Navigation("OrganizationUnits");
+
+                    b.Navigation("Passkeys");
 
                     b.Navigation("PasswordHistories");
 
