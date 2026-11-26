@@ -286,6 +286,24 @@ public class SmartPantryHttpApiHostModule : AbpModule
                     }
                 );
 
+                options.AddSecurityDefinition(
+                    "Bearer", 
+                    new OpenApiSecurityScheme
+                    {
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        Description = "Pegue access_token sin el prefijo Bearer."
+                    }
+                );
+
+                options.AddSecurityRequirement(
+                    document => 
+                    new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                    }
+                );
+
                 options.DocInclusionPredicate(
                     (docName, description) => true
                 );
